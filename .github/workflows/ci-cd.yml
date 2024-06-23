@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'feature/*'
+      - 'main'
   pull_request:
     branches:
       - main
@@ -13,14 +14,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
+    strategy:
+      matrix:
+        node-version: [12, 14, 16]  
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
       
-      - name: Set up Node.js
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: ${{ matrix.node-version }}
       
       - name: Install dependencies
         run: npm install
@@ -48,6 +52,17 @@ jobs:
       
       - name: Run security scan
         run: npm run security-scan
+      
+      - name: Analyze Dockerfile with Hadolint
+        run: docker run --rm -i hadolint/hadolint < Dockerfile
+      
+      - name: Analyze code with Semgrep
+        run: semgrep --config=python/lang/security-audit --lang=js .
+      
+      - name: Scan code vulnerabilities with Trivy
+        run: |
+          docker pull ${{ secrets.DOCKER_USERNAME }}/nodejsapp-cicd:${{ github.sha }}
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy ${{ secrets.DOCKER_USERNAME }}/nodejsapp-cicd:${{ github.sha }}
 
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -69,6 +84,12 @@ jobs:
       
       - name: Run security scan
         run: npm run security-scan
+      
+      - name: Analyze Dockerfile with Hadolint
+        run: docker run --rm -i hadolint/hadolint < Dockerfile
+      
+      - name: Analyze code with Semgrep
+        run: semgrep --config=python/lang/security-audit --lang=js .
       
       - name: Build Docker image
         run: |
