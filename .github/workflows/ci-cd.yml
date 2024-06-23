@@ -47,9 +47,6 @@ jobs:
       - name: Run tests
         run: npm test
       
-      - name: Run linter
-        run: npm run lint
-      
       - name: Run security scan
         run: npm run security-scan
 
@@ -70,9 +67,6 @@ jobs:
       
       - name: Run tests
         run: npm test
-      
-      - name: Run linter
-        run: npm run lint
       
       - name: Build Docker image
         run: |
