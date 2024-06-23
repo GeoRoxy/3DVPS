@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'feature/*'
+      - 'main'
   pull_request:
     branches:
       - main
@@ -43,6 +44,9 @@ jobs:
       - name: Install dependencies
         run: npm install
       
+      - name: Run tests
+        run: npm test
+      
       - name: Run linter
         run: npm run lint
       
@@ -51,7 +55,7 @@ jobs:
 
   build-and-deploy:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -80,5 +84,15 @@ jobs:
       - name: Push Docker image
         run: docker push ${{ secrets.DOCKER_USERNAME }}/nodejsapp-cicd:${{ github.sha }}
 
+      - name: Get Docker image digest
+        id: image-digest
+        run: |
+          IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ secrets.DOCKER_USERNAME }}/nodejsapp-cicd:${{ github.sha }})
+          echo "Image digest: $IMAGE_DIGEST"
+          echo "::set-output name=digest::$IMAGE_DIGEST"
+      
+      - name: Print Docker image digest
+        run: echo ${{ steps.image-digest.outputs.digest }}
+      
       - name: Run security scan
         run: npm run security-scan
