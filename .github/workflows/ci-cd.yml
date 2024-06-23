@@ -16,19 +16,19 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
     strategy:
       matrix:
-        node-version: [12, 14, 16]  
+        node-version: [12, 14, 16]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
+
       - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-      
+
       - name: Install dependencies
         run: npm install
-      
+
       - name: Run tests
         run: npm test
 
@@ -38,31 +38,34 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
           node-version: '14'
-      
+
       - name: Install dependencies
         run: npm install
-      
+
       - name: Run tests
         run: npm test
-      
+
       - name: Run security scan
         run: npm run security-scan
-      
+
       - name: Analyze Dockerfile with Hadolint
         run: docker run --rm -i hadolint/hadolint < Dockerfile
-      
+
       - name: Analyze code with Semgrep
-        run: semgrep --config=python/lang/security-audit --lang=js .
-      
+        run: |
+          curl -L https://github.com/returntocorp/semgrep/releases/latest/download/semgrep-ci-linux-amd64 -o /usr/local/bin/semgrep
+          chmod +x /usr/local/bin/semgrep
+          semgrep --config=p/ci .
+
       - name: Scan code vulnerabilities with Trivy
         run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/nodejsapp-cicd:${{ github.sha }}
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy ${{ secrets.DOCKER_USERNAME }}/nodejsapp-cicd:${{ github.sha }}
+          docker pull aquasec/trivy:latest
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy --no-progress .
 
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -70,34 +73,42 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
           node-version: '14'
-      
+
       - name: Install dependencies
         run: npm install
-      
+
       - name: Run tests
         run: npm test
-      
+
       - name: Run security scan
         run: npm run security-scan
-      
+
       - name: Analyze Dockerfile with Hadolint
         run: docker run --rm -i hadolint/hadolint < Dockerfile
-      
+
       - name: Analyze code with Semgrep
-        run: semgrep --config=python/lang/security-audit --lang=js .
-      
+        run: |
+          curl -L https://github.com/returntocorp/semgrep/releases/latest/download/semgrep-ci-linux-amd64 -o /usr/local/bin/semgrep
+          chmod +x /usr/local/bin/semgrep
+          semgrep --config=p/ci .
+
+      - name: Scan code vulnerabilities with Trivy
+        run: |
+          docker pull aquasec/trivy:latest
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy --no-progress .
+
       - name: Build Docker image
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/nodejsapp-cicd:${{ github.sha }} .
-      
+
       - name: Login to Docker Hub
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-      
+
       - name: Push Docker image
         run: docker push ${{ secrets.DOCKER_USERNAME }}/nodejsapp-cicd:${{ github.sha }}
 
@@ -107,6 +118,6 @@ jobs:
           IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ secrets.DOCKER_USERNAME }}/nodejsapp-cicd:${{ github.sha }})
           echo "Image digest: $IMAGE_DIGEST"
           echo "::set-output name=digest::$IMAGE_DIGEST"
-      
+
       - name: Print Docker image digest
         run: echo ${{ steps.image-digest.outputs.digest }}
