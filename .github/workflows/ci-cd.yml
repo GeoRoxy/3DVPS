@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - 'feature/*'
-      - 'main'
   pull_request:
     branches:
       - main
@@ -13,7 +12,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main/')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
