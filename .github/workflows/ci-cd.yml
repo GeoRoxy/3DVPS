@@ -44,11 +44,11 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Run tests
-        run: npm test
-      
       - name: Run linter
         run: npm run lint
+      
+      - name: Run tests
+        run: npm test
       
       - name: Run security scan
         run: npm run security-scan
@@ -68,11 +68,14 @@ jobs:
       - name: Install dependencies
         run: npm install
       
+      - name: Run linter
+        run: npm run lint
+      
       - name: Run tests
         run: npm test
       
-      - name: Run linter
-        run: npm run lint
+      - name: Run security scan
+        run: npm run security-scan
       
       - name: Build Docker image
         run: |
@@ -93,6 +96,3 @@ jobs:
       
       - name: Print Docker image digest
         run: echo ${{ steps.image-digest.outputs.digest }}
-      
-      - name: Run security scan
-        run: npm run security-scan
